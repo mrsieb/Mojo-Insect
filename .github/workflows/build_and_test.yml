@@ -28,7 +28,7 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
             artifact_vst3: "MojoInsects_artefacts/Release/VST3/Mojo Insects.vst3"
             artifact_au:   "MojoInsects_artefacts/Release/AU/Mojo Insects.component"
-            pluginval_url: https://github.com/Tracktion/pluginval/releases/download/v${{ env.PLUGINVAL_VERSION }}/pluginval_macOS.zip
+            pluginval_os: macOS
 
           # ── macOS (Intel) ──────────────────────────────────────────────────
           - name: macOS (x86_64)
@@ -38,7 +38,7 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
             artifact_vst3: "MojoInsects_artefacts/Release/VST3/Mojo Insects.vst3"
             artifact_au:   "MojoInsects_artefacts/Release/AU/Mojo Insects.component"
-            pluginval_url: https://github.com/Tracktion/pluginval/releases/download/v${{ env.PLUGINVAL_VERSION }}/pluginval_macOS.zip
+            pluginval_os: macOS
 
           # ── Windows ───────────────────────────────────────────────────────
           - name: Windows (x64)
@@ -46,7 +46,7 @@ jobs:
             cmake_flags: -A x64
             artifact_vst3: "MojoInsects_artefacts/Release/VST3/Mojo Insects.vst3"
             artifact_au:   ""
-            pluginval_url: https://github.com/Tracktion/pluginval/releases/download/v${{ env.PLUGINVAL_VERSION }}/pluginval_Windows.zip
+            pluginval_os: Windows
 
           # ── Linux ─────────────────────────────────────────────────────────
           - name: Linux (x86_64)
@@ -54,7 +54,7 @@ jobs:
             cmake_flags: ""
             artifact_vst3: "MojoInsects_artefacts/Release/VST3/Mojo Insects.vst3"
             artifact_au:   ""
-            pluginval_url: https://github.com/Tracktion/pluginval/releases/download/v${{ env.PLUGINVAL_VERSION }}/pluginval_Linux.zip
+            pluginval_os: Linux
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
@@ -117,9 +117,10 @@ jobs:
         run: ctest --test-dir build -C ${{ env.BUILD_TYPE }} --output-on-failure
 
       # ── pluginval ─────────────────────────────────────────────────────────
+      # Build the URL here in the step — env context is unavailable in strategy.matrix.
       - name: Download pluginval
         run: |
-          curl -fsSL "${{ matrix.pluginval_url }}" -o pluginval.zip
+          curl -fsSL "https://github.com/Tracktion/pluginval/releases/download/v${{ env.PLUGINVAL_VERSION }}/pluginval_${{ matrix.pluginval_os }}.zip" -o pluginval.zip
           unzip -o pluginval.zip -d pluginval_dir
 
       - name: Validate VST3 (pluginval)
