@@ -17,32 +17,41 @@ CPMAddPackage(
 )
 
 # ── ONNX Runtime (static prebuilt) ────────────────────────────────────────────
-# We pull the source and build with static runtime; adjust the tag as needed.
-CPMAddPackage(
-    NAME onnxruntime
-    GITHUB_REPOSITORY microsoft/onnxruntime
-    VERSION 1.19.2
-    DOWNLOAD_ONLY YES  # Built separately via CMake ExternalProject or pre-built binaries
-)
+# Guard the download behind an option — the full onnxruntime repo is ~1.5 GB.
+# Disable by default so CI builds stay fast; enable when you have a pre-built
+# binary or want to build from source.
+option(MOJO_ENABLE_ONNX "Download and link ONNX Runtime" OFF)
 
-# Provide a simple imported target so source files can link against it.
-# In CI you would download a pre-built static lib matching your platform and
-# set ONNXRUNTIME_ROOT_DIR to point at it.
-if(DEFINED ENV{ONNXRUNTIME_ROOT_DIR})
-    set(ORT_ROOT $ENV{ONNXRUNTIME_ROOT_DIR})
-else()
-    set(ORT_ROOT "" CACHE PATH "Path to ONNX Runtime installation (include/ and lib/)")
+if(MOJO_ENABLE_ONNX)
+    CPMAddPackage(
+        NAME onnxruntime
+        GITHUB_REPOSITORY microsoft/onnxruntime
+        VERSION 1.19.2
+        DOWNLOAD_ONLY YES  # Built separately via CMake ExternalProject or pre-built binaries
+    )
 endif()
 
+# Provide a simple imported target so source files can link against it.
+# When MOJO_ENABLE_ONNX is OFF this target is empty and source compiles cleanly
+# in passthrough mode (no ONNX calls will be reachable via the #ifdef guard).
 add_library(onnxruntime_static INTERFACE)
-if(ORT_ROOT)
-    target_include_directories(onnxruntime_static INTERFACE "${ORT_ROOT}/include")
-    if(WIN32)
-        target_link_libraries(onnxruntime_static INTERFACE "${ORT_ROOT}/lib/onnxruntime.lib")
-    elseif(APPLE)
-        target_link_libraries(onnxruntime_static INTERFACE "${ORT_ROOT}/lib/libonnxruntime.a")
+
+if(MOJO_ENABLE_ONNX)
+    # In CI you would download a pre-built static lib matching your platform and
+    # set ONNXRUNTIME_ROOT_DIR to point at it.
+    if(DEFINED ENV{ONNXRUNTIME_ROOT_DIR})
+        set(ORT_ROOT $ENV{ONNXRUNTIME_ROOT_DIR})
     else()
-        target_link_libraries(onnxruntime_static INTERFACE "${ORT_ROOT}/lib/libonnxruntime.a")
+        set(ORT_ROOT "" CACHE PATH "Path to ONNX Runtime installation (include/ and lib/)")
+    endif()
+
+    if(ORT_ROOT)
+        target_include_directories(onnxruntime_static INTERFACE "${ORT_ROOT}/include")
+        if(WIN32)
+            target_link_libraries(onnxruntime_static INTERFACE "${ORT_ROOT}/lib/onnxruntime.lib")
+        else()
+            target_link_libraries(onnxruntime_static INTERFACE "${ORT_ROOT}/lib/libonnxruntime.a")
+        endif()
     endif()
 endif()
 
@@ -88,6 +97,10 @@ target_compile_definitions(MojoInsects
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
+
+if(MOJO_ENABLE_ONNX)
+    target_compile_definitions(MojoInsects PUBLIC MOJO_ONNX_ENABLED=1)
+endif()
 
 target_link_libraries(MojoInsects
     PRIVATE
