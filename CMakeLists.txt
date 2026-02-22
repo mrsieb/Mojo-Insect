@@ -52,6 +52,7 @@ CPMAddPackage(
     GITHUB_REPOSITORY catchorg/Catch2
     VERSION 3.6.0
 )
+list(APPEND CMAKE_MODULE_PATH "${Catch2_SOURCE_DIR}/extras")
 
 # ── Plugin target ─────────────────────────────────────────────────────────────
 juce_add_plugin(MojoInsects
